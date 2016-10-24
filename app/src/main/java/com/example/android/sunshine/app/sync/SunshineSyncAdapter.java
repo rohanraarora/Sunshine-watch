@@ -37,6 +37,7 @@ import com.example.android.sunshine.app.R;
 import com.example.android.sunshine.app.Utility;
 import com.example.android.sunshine.app.data.WeatherContract;
 import com.example.android.sunshine.app.muzei.WeatherMuzeiSource;
+import com.example.android.sunshine.app.wear.WearSyncService;
 import com.google.android.gms.common.ConnectionResult;
 import com.google.android.gms.common.api.GoogleApiClient;
 import com.google.android.gms.common.api.ResolvingResultCallbacks;
@@ -66,7 +67,7 @@ import java.util.concurrent.ExecutionException;
 
 import static android.R.attr.bitmap;
 
-public class SunshineSyncAdapter extends AbstractThreadedSyncAdapter implements GoogleApiClient.ConnectionCallbacks, GoogleApiClient.OnConnectionFailedListener{
+public class SunshineSyncAdapter extends AbstractThreadedSyncAdapter {
     public final String LOG_TAG = SunshineSyncAdapter.class.getSimpleName();
     public static final String ACTION_DATA_UPDATED =
             "com.example.android.sunshine.app.ACTION_DATA_UPDATED";
@@ -91,20 +92,7 @@ public class SunshineSyncAdapter extends AbstractThreadedSyncAdapter implements 
     private static final int INDEX_MIN_TEMP = 2;
     private static final int INDEX_SHORT_DESC = 3;
 
-    @Override
-    public void onConnected(Bundle bundle) {
 
-    }
-
-    @Override
-    public void onConnectionSuspended(int i) {
-
-    }
-
-    @Override
-    public void onConnectionFailed(ConnectionResult connectionResult) {
-
-    }
 
     @Retention(RetentionPolicy.SOURCE)
     @IntDef({LOCATION_STATUS_OK, LOCATION_STATUS_SERVER_DOWN, LOCATION_STATUS_SERVER_INVALID,  LOCATION_STATUS_UNKNOWN, LOCATION_STATUS_INVALID})
@@ -116,17 +104,12 @@ public class SunshineSyncAdapter extends AbstractThreadedSyncAdapter implements 
     public static final int LOCATION_STATUS_UNKNOWN = 3;
     public static final int LOCATION_STATUS_INVALID = 4;
 
-    GoogleApiClient mGoogleApiClient;
+
 
     public SunshineSyncAdapter(Context context, boolean autoInitialize) {
         super(context, autoInitialize);
         Log.d(LOG_TAG, "Connecting to Google Api");
-        mGoogleApiClient = new GoogleApiClient.Builder(context)
-                .addApi(Wearable.API)
-                .addConnectionCallbacks(this)
-                .addOnConnectionFailedListener(this)
-                .build();
-        mGoogleApiClient.connect();
+
     }
 
     @Override
@@ -385,7 +368,7 @@ public class SunshineSyncAdapter extends AbstractThreadedSyncAdapter implements 
                 updateWidgets();
                 updateMuzei();
                 notifyWeather();
-                updateWatch();
+                WearSyncService.getInstance(getContext()).updateWatch();
             }
             Log.d(LOG_TAG, "Sync Complete. " + cVVector.size() + " Inserted");
             setLocationStatus(getContext(), LOCATION_STATUS_OK);
@@ -405,50 +388,6 @@ public class SunshineSyncAdapter extends AbstractThreadedSyncAdapter implements 
         context.sendBroadcast(dataUpdatedIntent);
     }
 
-    private void updateWatch(){
-        Context context = getContext();
-        String locationQuery = Utility.getPreferredLocation(context);
-
-        Uri weatherUri = WeatherContract.WeatherEntry.buildWeatherLocationWithDate(locationQuery, System.currentTimeMillis());
-
-        // we'll query our contentProvider, as always
-        Cursor cursor = context.getContentResolver().query(weatherUri, NOTIFY_WEATHER_PROJECTION, null, null, null);
-
-        if (cursor.moveToFirst()) {
-            int weatherId = cursor.getInt(INDEX_WEATHER_ID);
-            double high = cursor.getDouble(INDEX_MAX_TEMP);
-            int highTemp = (int)Math.round(high);
-            double low = cursor.getDouble(INDEX_MIN_TEMP);
-            int lowTemp =(int) Math.round(low);
-            int iconId = Utility.getIconResourceForWeatherCondition(weatherId);
-            Bitmap iconBitmap = BitmapFactory.decodeResource(getContext().getResources(), iconId);
-
-            PutDataMapRequest mapRequest = PutDataMapRequest.create("/update-weather");
-            mapRequest.getDataMap().putString("high-temp", highTemp + "°");
-            mapRequest.getDataMap().putString("low-temp", lowTemp + "°");
-            mapRequest.getDataMap().putAsset("icon-asset", createAssetFromBitmap(iconBitmap));
-
-            PutDataRequest request = mapRequest.asPutDataRequest();
-            Wearable.DataApi.putDataItem(mGoogleApiClient, request).setResultCallback(new ResultCallbacks<DataApi.DataItemResult>() {
-                @Override
-                public void onSuccess(DataApi.DataItemResult dataItemResult) {
-                    Log.d("rohan", "sent Success!");
-                }
-
-                @Override
-                public void onFailure(Status status) {
-                    Log.d("rohan", "sent Failure!");
-                }
-            });
-        }
-
-    }
-
-    private static Asset createAssetFromBitmap(Bitmap bitmap) {
-        final ByteArrayOutputStream byteStream = new ByteArrayOutputStream();
-        bitmap.compress(Bitmap.CompressFormat.PNG, 100, byteStream);
-        return Asset.createFromBytes(byteStream.toByteArray());
-    }
 
     private void updateMuzei() {
         // Muzei is only compatible with Jelly Bean MR1+ devices, so there's no need to update the

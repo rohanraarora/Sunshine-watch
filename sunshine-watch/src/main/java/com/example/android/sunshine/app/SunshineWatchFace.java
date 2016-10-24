@@ -115,6 +115,8 @@ public class SunshineWatchFace extends CanvasWatchFaceService {
         GoogleApiClient.OnConnectionFailedListener,
         DataApi.DataListener {
 
+        private static final String WEATHER_PATH = "/update-weather";
+
         final Handler mUpdateTimeHandler = new EngineHandler(this);
         boolean mRegisteredTimeZoneReceiver = false;
         Paint mBackgroundPaint;
@@ -138,6 +140,7 @@ public class SunshineWatchFace extends CanvasWatchFaceService {
         String highTemp = "";
         String lowTemp = "";
         Bitmap iconBitmap;
+        Boolean isRound = false;
 
         /**
          * Whether the display supports fewer bits for each color in ambient mode. When true, we
@@ -242,7 +245,7 @@ public class SunshineWatchFace extends CanvasWatchFaceService {
 
             // Load resources that have alternate values for round watches.
             Resources resources = SunshineWatchFace.this.getResources();
-            boolean isRound = insets.isRound();
+            isRound = insets.isRound();
             mXOffset = resources.getDimension(isRound
                     ? R.dimen.digital_x_offset_round : R.dimen.digital_x_offset);
             float largeSize = resources.getDimension(isRound
@@ -322,19 +325,32 @@ public class SunshineWatchFace extends CanvasWatchFaceService {
                 canvas.drawText(dateText,centerX - dateWidth/2,dateOffset ,mDatePaint);
             }
 
+            float tempYOffset;
+            if(isRound){
+                tempYOffset = 2 * centerY - mYOffset + convertPixelsToDp(mHighTempPaint.getTextSize());
+            }
+            else {
+                tempYOffset = centerY + 2*margin + 2*convertPixelsToDp(mHighTempPaint.getTextSize());
+            }
 
-            float tempYOffset = 2*centerY - mYOffset + convertPixelsToDp(mHighTempPaint.getTextSize());
 
+
+            float tempWidth = mHighTempPaint.measureText(highTemp) + margin/2
+                    + mLowTempPaint.measureText(lowTemp);
             if(!mAmbient){
-                float highTempXOffset = centerX + margin;
+                float highTempXOffset;
+                if(isRound) {
+                    highTempXOffset = centerX + margin;
+                }
+                else {
+                    highTempXOffset = centerX - tempWidth/2;
+                }
                 float lowTempXOffset = highTempXOffset + margin/2
                         + mHighTempPaint.measureText(highTemp);
                 canvas.drawText(highTemp,highTempXOffset,tempYOffset,mHighTempPaint);
                 canvas.drawText(lowTemp,lowTempXOffset,tempYOffset,mLowTempPaint);
             }
             else {
-                float tempWidth = mHighTempPaint.measureText(highTemp) + margin/2
-                        + mLowTempPaint.measureText(lowTemp);
                 float highTempXOffset = centerX - tempWidth/2;
                 float lowTempXOffset = highTempXOffset + margin/2
                         + mHighTempPaint.measureText(highTemp);
@@ -344,7 +360,12 @@ public class SunshineWatchFace extends CanvasWatchFaceService {
 
             if(!mAmbient && iconBitmap!=null){
                 float iconYOffset = centerY + margin;
-                canvas.drawBitmap(iconBitmap,centerX - iconBitmap.getWidth() - margin,iconYOffset,mIconPaint);
+                if(isRound) {
+                    canvas.drawBitmap(iconBitmap, centerX - iconBitmap.getWidth() - margin, iconYOffset, mIconPaint);
+                }
+                else {
+                    canvas.drawBitmap(iconBitmap,centerX + margin,15,mIconPaint);
+                }
             }
 
 
@@ -399,7 +420,7 @@ public class SunshineWatchFace extends CanvasWatchFaceService {
 
         @Override
         public void onConnectionFailed(@NonNull ConnectionResult connectionResult) {
-            Log.d("rohan","fail");
+            Log.d("rohan","fail " + connectionResult.getErrorCode() + " " + connectionResult.getErrorMessage());
         }
 
 
@@ -420,7 +441,7 @@ public class SunshineWatchFace extends CanvasWatchFaceService {
             Log.d("rohan","receive");
             for (DataEvent event : dataEvents) {
                 if (event.getType() == DataEvent.TYPE_CHANGED &&
-                        event.getDataItem().getUri().getPath().equals("/update-weather")) {
+                        event.getDataItem().getUri().getPath().equals(WEATHER_PATH)) {
                     processDataItem(event.getDataItem());
                     // Do something with the bitmap
                 }

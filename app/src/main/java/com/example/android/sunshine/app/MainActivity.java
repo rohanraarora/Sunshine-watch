@@ -33,6 +33,7 @@ import android.view.View;
 import com.example.android.sunshine.app.data.WeatherContract;
 import com.example.android.sunshine.app.gcm.RegistrationIntentService;
 import com.example.android.sunshine.app.sync.SunshineSyncAdapter;
+import com.example.android.sunshine.app.wear.WearSyncService;
 import com.google.android.gms.common.ConnectionResult;
 import com.google.android.gms.common.GoogleApiAvailability;
 
@@ -90,6 +91,7 @@ public class MainActivity extends AppCompatActivity implements ForecastFragment.
         }
 
         SunshineSyncAdapter.initializeSyncAdapter(this);
+        WearSyncService.getInstance(this).updateWatch();
 
         // If Google Play Services is up to date, we'll want to register GCM. If it is not, we'll
         // skip the registration and this device will not receive any downstream messages from
