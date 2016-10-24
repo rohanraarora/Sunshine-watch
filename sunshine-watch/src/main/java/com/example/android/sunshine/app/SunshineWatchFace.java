@@ -115,8 +115,6 @@ public class SunshineWatchFace extends CanvasWatchFaceService {
         GoogleApiClient.OnConnectionFailedListener,
         DataApi.DataListener {
 
-        private static final String WEATHER_PATH = "/update-weather";
-
         final Handler mUpdateTimeHandler = new EngineHandler(this);
         boolean mRegisteredTimeZoneReceiver = false;
         Paint mBackgroundPaint;
@@ -246,6 +244,8 @@ public class SunshineWatchFace extends CanvasWatchFaceService {
             // Load resources that have alternate values for round watches.
             Resources resources = SunshineWatchFace.this.getResources();
             isRound = insets.isRound();
+            mYOffset = resources.getDimension(isRound
+                    ? R.dimen.digital_y_offset_circular: R.dimen.digital_y_offset);
             mXOffset = resources.getDimension(isRound
                     ? R.dimen.digital_x_offset_round : R.dimen.digital_x_offset);
             float largeSize = resources.getDimension(isRound
@@ -325,26 +325,11 @@ public class SunshineWatchFace extends CanvasWatchFaceService {
                 canvas.drawText(dateText,centerX - dateWidth/2,dateOffset ,mDatePaint);
             }
 
-            float tempYOffset;
-            if(isRound){
-                tempYOffset = 2 * centerY - mYOffset + convertPixelsToDp(mHighTempPaint.getTextSize());
-            }
-            else {
-                tempYOffset = centerY + 2*margin + 2*convertPixelsToDp(mHighTempPaint.getTextSize());
-            }
-
-
-
+            float tempYOffset = 2 * centerY - mYOffset + convertPixelsToDp(mHighTempPaint.getTextSize());
             float tempWidth = mHighTempPaint.measureText(highTemp) + margin/2
                     + mLowTempPaint.measureText(lowTemp);
             if(!mAmbient){
-                float highTempXOffset;
-                if(isRound) {
-                    highTempXOffset = centerX + margin;
-                }
-                else {
-                    highTempXOffset = centerX - tempWidth/2;
-                }
+                float highTempXOffset = centerX + margin;
                 float lowTempXOffset = highTempXOffset + margin/2
                         + mHighTempPaint.measureText(highTemp);
                 canvas.drawText(highTemp,highTempXOffset,tempYOffset,mHighTempPaint);
@@ -360,12 +345,7 @@ public class SunshineWatchFace extends CanvasWatchFaceService {
 
             if(!mAmbient && iconBitmap!=null){
                 float iconYOffset = centerY + margin;
-                if(isRound) {
-                    canvas.drawBitmap(iconBitmap, centerX - iconBitmap.getWidth() - margin, iconYOffset, mIconPaint);
-                }
-                else {
-                    canvas.drawBitmap(iconBitmap,centerX + margin,15,mIconPaint);
-                }
+                canvas.drawBitmap(iconBitmap, centerX - iconBitmap.getWidth() - margin, iconYOffset, mIconPaint);
             }
 
 
@@ -441,7 +421,7 @@ public class SunshineWatchFace extends CanvasWatchFaceService {
             Log.d("rohan","receive");
             for (DataEvent event : dataEvents) {
                 if (event.getType() == DataEvent.TYPE_CHANGED &&
-                        event.getDataItem().getUri().getPath().equals(WEATHER_PATH)) {
+                        event.getDataItem().getUri().getPath().equals("/update-weather")) {
                     processDataItem(event.getDataItem());
                     // Do something with the bitmap
                 }
